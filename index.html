@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Mock Cart Experiment</title>
+<style>
+ body {font-family: Arial, sans-serif; margin: 2rem;}
+ .cart-item, .rec-item {border: 1px solid #ccc; padding: 8px; margin-bottom: 8px;}
+ .recs {margin-top: 24px;}
+ .hidden {display:none;}
+ button {padding: 10px 20px; font-size: 1rem;}
+</style>
+</head>
+<body>
+
+<h2>Your Shopping Cart</h2>
+<div id="cart">
+  <div class="cart-item">Wireless Mouse — $19.99</div>
+  <div class="cart-item">Laptop Sleeve — $24.99</div>
+</div>
+
+<!-- recommendation block -->
+<div id="recBlock" class="recs hidden">
+  <h3 id="recTitle"></h3>
+  <div id="recContainer"></div>
+</div>
+
+<button id="checkoutBtn">Proceed to Checkout</button>
+
+<script>
+// ====== 1. read or assign condition ======
+function getParam(p){ return new URLSearchParams(location.search).get(p);}
+let condition = getParam("cond") || "control";   // fallback if no URL param
+
+// Qualtrics version: let condition = Qualtrics.SurveyEngine.getEmbeddedData("condition");
+
+// ====== 2. populate recommendations if needed ======
+const recsPersonal = [
+  "Wireless Keyboard — $29.99",
+  "USB-C Hub — $34.99",
+  "Ergonomic Laptop Stand — $39.99"
+];
+const recsGeneric = [
+  "Best-Seller T-Shirt — $12.99",
+  "Reusable Water Bottle — $14.99",
+  "Popular Novel — $9.99"
+];
+
+if(condition !== "control"){
+  document.getElementById("recBlock").classList.remove("hidden");
+  document.getElementById("recTitle").textContent = 
+      condition==="perso" ? "Recommended for You" : "Customers Love These";
+  const arr = condition==="perso" ? recsPersonal : recsGeneric;
+  arr.forEach(txt=>{
+    const div=document.createElement("div");
+    div.className="rec-item";
+    div.textContent=txt;
+    document.getElementById("recContainer").appendChild(div);
+  });
+}
+
+// ====== 3. handle checkout vs abandon ======
+let abandoned = true;          // default = abandon
+document.getElementById("checkoutBtn").onclick=function(){
+  abandoned = false;
+  finish();
+};
+window.addEventListener("beforeunload", finish, {once:true});
+
+function finish(){
+  //  --- Qualtrics embedded data example ---
+  // Qualtrics.SurveyEngine.setEmbeddedData("abandon", abandoned?1:0);
+  // Qualtrics.SurveyEngine.setEmbeddedData("condition", condition);
+
+  // --- GitHub/Netlify example: POST to hidden form  ---
+  fetch("https://formspree.io/f/yourNetlifyID",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      proclID:getParam("PROLIFIC_PID"),   // Prolific respondent ID
+      cond:condition,
+      abandon: abandoned ? 1 : 0,
+      ts: Date.now()
+    })
+  });
+}
+</script>
+</body>
+</html>
